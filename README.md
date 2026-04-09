@@ -25,21 +25,22 @@ This is the flow that worked: get the board **on WiFi with Arduino’s BasicOTA*
 
 1. Install [Arduino IDE](https://www.arduino.cc/en/software) and the **Espressif ESP32** board package (Additional Board URL: `https://espressif.github.io/arduino-esp32/package_esp32_index.json`).
 2. **File → Examples → ArduinoOTA → BasicOTA**.
-3. Set **SSID** and **WiFi password** in the sketch. Note whether you use **`ArduinoOTA.setPassword("...")`** — you will match that password later in this project’s `platformio.ini` / `wifi_config.h`.
+3. Set **SSID** and **WiFi password** in the sketch. Note whether you use **`ArduinoOTA.setPassword("...")`** — you will match that password later in this project’s `.env` (`OTA_PASSWORD`).
 4. **Tools → Board → ESP32 Dev Module**, pick the **COM** port, choose a partition scheme with **OTA** (e.g. default schemes that include two app slots).
 5. **Upload**, then **Serial Monitor** (usually **115200** baud) and note the **IP address** (e.g. `192.168.2.2`). The board is now on WiFi and listening for OTA.
 
 ### 2) In this repo — configure WiFi and OTA password
 
-1. **`include/wifi_config.h`** (copy from `wifi_config.h.example` if needed):
+1. Copy **`.env.example`** to **`.env`** and set:
    - **`WIFI_SSID`** / **`WIFI_PASSWORD`** — same network the ESP32 already uses.
-   - **`OTA_PASSWORD`** — must be a **defined, uncommented** `#define` (not commented out), or the build fails. Use the **same string** as:
+   - **`OTA_PASSWORD`** — use the **same string** as:
      - **`ArduinoOTA.setPassword(...)`** in BasicOTA **if** you set one, **or**
-     - a new secret you choose — then you will flash this project **once** OTA using that password (see below).
+     - a new secret you choose — then flash this project once OTA with that password.
+   - Optional: **`ESP32_OTA_IP`** to override OTA target IP at upload time.
 
 2. **`platformio.ini` → `[env:esp32_epaper_ota]`:**
-   - **`upload_port`** = ESP32 **IP** (e.g. `192.168.2.2`). DHCP may change it after reboot — if OTA fails, check the IP again via Serial Monitor or your router.
-   - **`upload_flags`** with **`--auth=YourPassword`** must match **`OTA_PASSWORD`** in `wifi_config.h` **exactly** when you use OTA with a password. If BasicOTA had **no** password, you may omit `--auth` (depends on esptool / device; if in doubt, set a password in both places).
+   - `scripts/load_env.py` injects `--auth=${OTA_PASSWORD}` from `.env`.
+   - `upload_port` can be left as default or overridden by `.env` (`ESP32_OTA_IP`).
 
 ### 3) Build and OTA-upload this project (Mac or Windows, same LAN)
 
@@ -104,10 +105,30 @@ If you do not want shell activation, use the full path:
 .venv/bin/pio run -e esp32_epaper_ota -t upload
 ```
 
-### WiFi and secrets (`wifi_config.h`)
+### WiFi and secrets (`.env`, recommended)
 
-1. `cp include/wifi_config.h.example include/wifi_config.h`
-2. Edit **`include/wifi_config.h`**: **`WIFI_SSID`**, **`WIFI_PASSWORD`**, **`OTA_PASSWORD`** (must stay **uncommented** for OTA code paths).
+Use a local `.env` file in the repo root (ignored by git) and let PlatformIO inject values at build time.
+
+1. Copy the template:
+
+```bash
+cp .env.example .env
+```
+
+2. Edit **`.env`** with your real values:
+
+```env
+WIFI_SSID="your-2.4ghz-ssid"
+WIFI_PASSWORD="your-wifi-password"
+OTA_PASSWORD="your-ota-password"
+# ESP32_OTA_IP="192.168.2.2"   # optional, for OTA env
+```
+
+3. Build/upload as normal (`pio run ...`).  
+   `scripts/load_env.py` reads `.env` and:
+   - adds `WIFI_SSID`, `WIFI_PASSWORD`, `OTA_PASSWORD` as compile-time defines
+   - for `esp32_epaper_ota`, updates `--auth=` from `OTA_PASSWORD`
+   - optionally overrides OTA `upload_port` from `ESP32_OTA_IP`
 
 Do not commit real passwords to a public repository.
 
@@ -192,7 +213,6 @@ The display stack (**U8g2**) uses **pre-rendered bitmap fonts** (C arrays), not 
 | `src/noto{22,28,36}.c` | U8g2 bitmap fonts (Noto Sans, generated) |
 | `include/font_noto_sans_u8g2.h` | Declarations for the Noto fonts |
 | `include/display_selection.h` | GxEPD2 panel driver |
-| `include/wifi_config.h` | WiFi + **`OTA_PASSWORD`** (from `.example`) |
 | `platformio.ini` | `esp32_epaper` (USB), `esp32_epaper_ota` (WiFi IP + `--auth`) |
 
 ---

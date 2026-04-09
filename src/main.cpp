@@ -19,7 +19,14 @@
 
 #include "display_selection.h"
 #include "font_noto_sans_u8g2.h"
-#include "wifi_config.h"
+
+#ifndef WIFI_SSID
+#define WIFI_SSID ""
+#endif
+
+#ifndef WIFI_PASSWORD
+#define WIFI_PASSWORD ""
+#endif
 
 #ifndef OTA_PASSWORD
 #define OTA_PASSWORD ""
@@ -233,7 +240,7 @@ static bool connectWifi() {
 
 static void setupOta() {
   if (strlen(OTA_PASSWORD) == 0) {
-    Serial.println("OTA: disabled (set OTA_PASSWORD in wifi_config.h)");
+    Serial.println("OTA: disabled (set OTA_PASSWORD in .env)");
     return;
   }
   ArduinoOTA.setHostname("esp32-vg-news");
@@ -259,9 +266,9 @@ void setup() {
                 (int)esp_reset_reason());
 
   if (strlen(WIFI_SSID) == 0) {
-    Serial.println("WiFi: set WIFI_SSID in wifi_config.h");
+    Serial.println("WiFi: set WIFI_SSID in .env");
     initEpd();
-    drawScreen("WiFi: fyll inn SSID i wifi_config.h", nullptr);
+    drawScreen("WiFi: fyll inn SSID i .env", nullptr);
     return;
   }
 
